@@ -13,12 +13,15 @@ To deploy to an AWS EC2 review:
 https://help.tableau.com/current/server/en-us/ts_aws_single_server.htm
 
 Acceptable EC2 types:
+
 C5.4xlarge (suitable for development environments only)
+
 m5.4xlarge (suitable for development or testing environments only)
+
 r5.4xlarge (suitable for development, testing, or production environments)
 
 Operating System:
-Amazon Linux 2 OS
+Amazon Linux 2
 EC2 instance should be in the same VPC and subnet where key cloak is hosted
 
 Storage Requirements:
