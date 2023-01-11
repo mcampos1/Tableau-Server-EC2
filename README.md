@@ -5,6 +5,7 @@ Tableau is a leading data visualization tool used for data analysis and business
 Analytics platform makes it easier for people to explore and manage data, and faster to discover and share insights that can change businesses and the world.
 Tableau is the most powerful, secure, and flexible end-to-end analytics platform.
 
+
 EC2 Server Provisioning
 
 Before starting Tableau Server Installation review minimum requirements
@@ -12,6 +13,7 @@ https://help.tableau.com/current/server-linux/en-us/server_hardware_min.htm
 
 To deploy to an AWS EC2 review:
 https://help.tableau.com/current/server/en-us/ts_aws_single_server.htm
+
 
 Acceptable EC2 types:
 
@@ -21,15 +23,18 @@ m5.4xlarge (suitable for development or testing environments only)
 
 r5.4xlarge (suitable for development, testing, or production environments)
 
+
 Operating System:
 Amazon Linux 2
 EC2 instance should be in the same VPC and subnet where key cloak is hosted
+
 
 Storage Requirements:
 
 30-50 GiB volume for the operating system
 100 GiB or larger volume for Tableau Server
 EBS recommended (SSD (gp2) or Provisioned IOPS)
+
 
 Security Groups: 
 Ports 22,80,443,8850 
@@ -46,6 +51,7 @@ Userdata bashscript:
 yum update -y
 
 yum install wget nano NetworkManager-tui wget bind-utils net-tools -y
+
 
 
 Tableau Server Installation
@@ -81,6 +87,7 @@ https://ip-ipaddress.ec2.internal:8850
 http://ip-address:8850
 
 
+
 Activate Tableau:
 https://help.tableau.com/current/server-linux/en-us/activate.htm
 
@@ -93,6 +100,8 @@ https://www.tableau.com/tableau-login-hub
 
 tsm licenses activate -k 1234-5768-9999-1236 #activate a license
 
+
+
 Tableau Server Registration
 create registration json file and edit values, json file template:
 https://help.tableau.com/current/server-linux/en-us/activate.htm
@@ -100,6 +109,8 @@ https://help.tableau.com/current/server-linux/en-us/activate.htm
 nano registration.json
 
 tsm register --file registration.json
+
+
 
 Identity Store Configuration
 
@@ -123,6 +134,8 @@ tsm initialize --start-server --request-timeout 1800
 
 tabcmd initialuser --server http://localhost --username 'desired usernmame'
 
+
+
 Configure SSL on Tableau Server:
 https://help.tableau.com/current/server/en-us/ssl_config.htm
 
@@ -141,6 +154,8 @@ Configuration Tab > Security > External SSL
 Select the 3 files
 Save pending changes > apply pending changes
 
+
+
 Setting Up Initial user in Keycloak and Tableau Server
 After creating administrator account, login into Tableau Server using the private IP adddress and the administrator account credentials created.
 Create users on Tableau Server, username should be in email format (ex. Tableauadmin@local.net)
@@ -148,6 +163,9 @@ Create users on Tableau Server, username should be in email format (ex. Tableaua
 Login into Keycloak Realm for Tableau, add users and include email value for the users (ex. tableauadmin@local.net), username doesn't need to be an email on keycloak
 
 Tableau by default maps users' email claim from the identity provider (Keycloak) to users' username in Tableau Server. (keycloak user's email == Tableau user's username)
+
+
+
 
 Integrate Tableau Server with KeyCloak
 
@@ -162,6 +180,8 @@ tsm pending-changes apply
 Troubleshooting OpenID Connect:
 https://help.tableau.com/current/server/en-us/openid_auth_troubleshooting.htm
 
+
+
 To deactivate license review:
 https://help.tableau.com/current/server/en-us/license_deactivate.htm
 
@@ -172,6 +192,8 @@ tsm licenses deactivate --license-key
 tsm pending-changes apply
 
 tsm restart
+
+
 
 Installing Database Drivers
 https://www.tableau.com/support/drivers
