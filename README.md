@@ -26,6 +26,7 @@ r5.4xlarge (suitable for development, testing, or production environments)
 
 Operating System:
 Amazon Linux 2
+RHEL 8 and below
 EC2 instance should be in the same VPC and subnet where key cloak is hosted
 
 
