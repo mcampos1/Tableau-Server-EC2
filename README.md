@@ -1,85 +1,152 @@
-Tableau Server Deployment on AWS EC2
-Version 2022 3.2
+# Tableau Server on AWS EC2
 
 Tableau is a leading data visualization tool used for data analysis and business intelligence.
 Analytics platform makes it easier for people to explore and manage data, and faster to discover and share insights that can change businesses and the world.
 Tableau is the most powerful, secure, and flexible end-to-end analytics platform.
 
-
 EC2 Server Provisioning
 
-Before starting Tableau Server Installation review minimum requirements
-https://help.tableau.com/current/server-linux/en-us/server_hardware_min.htm
-
-To deploy to an AWS EC2 review:
-https://help.tableau.com/current/server/en-us/ts_aws_single_server.htm
+[TableauServer-MinimumRequirements](https://help.tableau.com/current/server-linux/en-us/server_hardware_min.htm)
 
 
-Acceptable EC2 types:
+[EC2-Configuration](https://help.tableau.com/current/server-linux/en-us/ts_aws_virtual_machine_selection.htm)
 
-C5.4xlarge (suitable for development environments only)
+**Acceptable EC2 types:**
 
-m5.4xlarge (suitable for development or testing environments only)
+* C5.4xlarge (suitable for development environments only)
+* m5.4xlarge (suitable for development or testing environments only)
+* r5.4xlarge (suitable for development, testing, or production environments)
 
-r5.4xlarge (suitable for development, testing, or production environments)
+**Operating System:**
 
-
-Operating System:
-Amazon Linux 2
-RHEL 8 and below
-EC2 instance should be in the same VPC and subnet where key cloak is hosted
-
-
-Storage Requirements:
-
-30-50 GiB volume for the operating system
-100 GiB or larger volume for Tableau Server
-EBS recommended (SSD (gp2) or Provisioned IOPS)
+* RHEL7.9
+* Amazon Linux 2
 
 
-Security Groups: 
-Ports 22,80,443,8850 
-
-Attach a new key pair or use an existing one
-Once Instance is running, SSH into instance with keypair
-
-Userdata bashscript:
-
-#Install packages on EC2 Instance
-
-#!/bin/bash
-
-yum update -y
-
-yum install wget nano NetworkManager-tui wget bind-utils net-tools -y
+EC2 instance should be in the same VPC and subnet as key cloak 
 
 
+**Storage** 
 
-Tableau Server Installation
-https://help.tableau.com/current/server-linux/en-us/setup.htm
+EBS recommended (SSD (gp2) or Provisioned IOPS) 
 
-find the latest Tableau Server rpm version:
-https://www.tableau.com/support/releases/server
+Size: 250 GB
+
+**Security Group**
+
+| Port | Protocol | Source |
+| ---- | -------- | ------ |
+| 22 | TCP | 0.0.0.0/0 |
+| 80 | TCP | 0.0.0.0/0 |
+| 443 | TCP | 0.0.0.0/0 |
+| 8850 | TCP | 0.0.0.0/0 |
+
+**EC2 Tags** 
+* Name 
+* CLAP_OFF	0 17 @ @ 1-5 @
+* CLAP_ON	03 7 @ @ 1-5 @
+* CT_CLAP_IGNORE
+    * Never stop instance
+
+**Userdata bashscript to install yum packages and configure local firewall**
+
+    #!/bin/bash
+    yum update -y
+    yum install nano wget firewalld openssl cronie -y
+    systemctl enable firewalld
+    systemctl start firewalld
+    firewall-cmd --permanent --add-port={80,443,8850}/tcp
+    firewall-cmd --reload
+    firewall-cmd --list-all
+
+# Tableau Server Install & Initialize 
+
+[TableauInstall&Initialize](https://help.tableau.com/current/server-linux/en-us/setup.htm)
+
+[TableauServer-Releases](https://www.tableau.com/support/releases/server)
+
 
 use wget to download tableau server package to server
 
-right click on latest version package and copy link address
+    wget https://downloads.tableau.com/esdalt/2023.1.7/tableau-server-2023-1-7.x86_64.rpm
+    
+    sudo yum install tableau-server.rpm -y
 
-wget https://downloads.tableau.com/esdalt/2022.3.0/tableau-server-2022-3-0.x86_64.rpm
+    cd /opt/tableau/tableau_server/packages/scripts.20231.23.1011.0410/
 
-sudo yum install tableau-server.rpm -y
-
-cd /opt/tableau/tableau_server/packages/scripts.<version_code>/
-
-sudo ./initialize-tsm --accepteula --activation-service
+    sudo ./initialize-tsm --accepteula --activation-service
 
 The only required parameter for the initialize-tsm script is --accepteula
 
+# Activate Tableau:
+
+[TableauServer-Activation](https://help.tableau.com/current/server-linux/en-us/activate.htm)
+
+No license use 2 week free trial:
+
+    tsm licenses activate -t
+
+[TableauServer-CustomerPortal](https://www.tableau.com/tableau-login-hub)
+
+    tsm licenses activate -k 1234-5768-9999-1236 #activate a license
+
+# Tableau Server Registration
+
+create or transfer registration json file  
+
+[json file template](https://help.tableau.com/current/server-linux/en-us/activate.htm)
+
+    tsm register -f registration.json
+
+# Identity Store Configuration
+
+[Local Identity store settings file template](https://help.tableau.com/current/server-linux/en-us/entity_identity_store.htm)
+
+import file or create local settings file, apply changes
+
+    tsm settings import -f local.json
+
+    tsm pending-changes apply
+
+# Initialize & Add Adminstrator
+
+Initialize Server:
+
+    tsm initialize --start-server --request-timeout 1800
+
+Create initial user:
+
+    tabcmd initialuser --server http://localhost --username 'tabadmin'
+
+# Configure SSL 
+
+Generate self-signed certificate: 
+
+    openssl req -newkey rsa:4096 -x509 -sha256 -days 365 -nodes -out dev.crt -keyout dev.key
+
+Configure SSL
+
+    tsm security external-ssl enable --cert-file dev.crt --key-file dev.key 
+
+    tsm pending-changes apply
+
+
+4096 bit rsa key, x509 certificate, 256-bit Secure Hash Algorithm, certified for 1 year, creates key without a passphrase, spciefy filename of certificate, specify key filename
+
+# Tableau Server Web UI
+
+In order to use TSM Web UI, create user and add to tsmadmin group and apply SSL certificates to server
+
+    useradd xadmin
+
+    passwd xadmin
+
 add xadmin to tsmadmin group
 
-sudo usermod -G tsmadmin -a xadmin
+    sudo usermod -G tsmadmin -a xadmin
 
 Exit out of current shell and reopen to have updated shell
+
 
 To continue installing Tableau using the TSM Web Interface (GUI):
 
@@ -87,124 +154,83 @@ https://ip-ipaddress.ec2.internal:8850
 
 http://ip-address:8850
 
+# Cron jobs to start and stop TSM
 
+    sudo systemctl enable crond.service
+    sudo systemctl start crond.service
+    echo -e '#!/bin/bash\nsudo yum update -y\ntsm start' > start.sh
+    echo -e '#!/bin/bash\ntsm stop' > stop.sh
+    chmod +x start.sh
+    chmod +x stop.sh
+    touch backup.log
+    touch backup1.log
 
-Activate Tableau:
-https://help.tableau.com/current/server-linux/en-us/activate.htm
+Execute tsm start up script
 
-No license use 2 week free trial:
+    00 8 * * 1-5 /home/ec2-user/start.sh > /home/ec2-user/backup1.log 2>&1
 
-tsm licenses activate -t
+Execute tsm stop script monday - friday and redirect output to log file
 
-Login to customer portal to obtain tableau server license key:
-https://www.tableau.com/tableau-login-hub
+    30 16 * * 1-5 /home/ec2-user/stop.sh > /home/ec2-user/backup.log 2>&1
 
-tsm licenses activate -k 1234-5768-9999-1236 #activate a license
+Other cron commands
 
+    #crontab -e #crontab editor
+    #pgrep cron #check if cron is working
 
+# Setting Up Initial user in Keycloak and Tableau Server
 
-Tableau Server Registration
-create registration json file and edit values, json file template:
-https://help.tableau.com/current/server-linux/en-us/activate.htm
-
-nano registration.json
-
-tsm register --file registration.json
-
-
-
-Identity Store Configuration
-
-Create local identity store settings file from template:
-
-https://help.tableau.com/current/server-linux/en-us/entity_identity_store.htm\
-
-add local settings template from
-
-https://help.tableau.com/current/server-linux/en-us/config_general.htm
-
-import file, initialize server and create tableau administrator account
-
-nano local.json
-
-tsm settings import -f local.json
-
-tsm pending-changes apply
-
-tsm initialize --start-server --request-timeout 1800
-
-tabcmd initialuser --server http://localhost --username 'desired usernmame'
-
-
-
-Configure SSL on Tableau Server:
-https://help.tableau.com/current/server/en-us/ssl_config.htm
-
-obtain 3 files:
-
-name-ca
-
-server.key
-
-server.crt
-
-Sign in to the TSM Web interface (GUI) on the browser
-https://:8850
-
-Configuration Tab > Security > External SSL
-Select the 3 files
-Save pending changes > apply pending changes
-
-
-
-Setting Up Initial user in Keycloak and Tableau Server
 After creating administrator account, login into Tableau Server using the private IP adddress and the administrator account credentials created.
+
 Create users on Tableau Server, username should be in email format (ex. Tableauadmin@local.net)
 
 Login into Keycloak Realm for Tableau, add users and include email value for the users (ex. tableauadmin@local.net), username doesn't need to be an email on keycloak
 
 Tableau by default maps users' email claim from the identity provider (Keycloak) to users' username in Tableau Server. (keycloak user's email == Tableau user's username)
 
-
-
-
 Integrate Tableau Server with KeyCloak
 
-Once a user has been created in keycloak and tableau server, create identity.json and copy openid template: https://help.tableau.com/current/server-linux/en-us/entity_openid.htm
+[OpenIDConnect-Settings](https://help.tableau.com/current/server-linux/en-us/entity_openid.htm)
 
 Edit the values, then run:
 
-tsm settings import -f identity.json
+    tsm settings import -f identity.json
 
-tsm pending-changes apply
+    tsm pending-changes apply
 
-Troubleshooting OpenID Connect:
-https://help.tableau.com/current/server/en-us/openid_auth_troubleshooting.htm
+# Troubleshooting OpenID Connect:
+[TroubleshootOIDC](https://help.tableau.com/current/server/en-us/openid_auth_troubleshooting.htm)
 
+[Deactivate-Licenses](https://help.tableau.com/current/server/en-us/license_deactivate.htm)
 
+    tsm licenses list 
 
-To deactivate license review:
-https://help.tableau.com/current/server/en-us/license_deactivate.htm
+    tsm licenses deactivate --license-key <product-key>
 
-tsm licenses list
+    tsm pending-changes apply
 
-tsm licenses deactivate --license-key 
+    tsm restart
 
-tsm pending-changes apply
+# Installing Database Drivers
 
-tsm restart
+[DriverDownload](https://www.tableau.com/support/drivers)
 
+    wget https://download.oracle.com/otn-pub/otn_software/jdbc/233/ojdbc11.jar
+    mkdir -vp /opt/tableau/tableau_driver/jdbc
+    mv ojdbc11.jar /opt/tableau/tableau_driver/jdbc
 
+# Yum Package Management
 
-Installing Database Drivers
-https://www.tableau.com/support/drivers
+    #check version of a package
+    locate -b -e -r'^commons-text.*.jar$'
+    yum remove nano
+    yum info nano 
+    yum list installed 
 
-mkdir -p /opt/tableau/tableau_driver/jdbc
+# Optional
 
-wget driver-url
+* set system hostname
+* [Change-token-claim](https://help.tableau.com/current/server-linux/en-us/cli_authentication_tsm.htm#TSMOIDC)
 
-To change the default claim tableau uses to map users with keycloak:
-https://help.tableau.com/current/server-linux/en-us/cli_authentication_tsm.htm#TSMOIDC
-
-tsm authentication openid map-claims -un username
+    tsm authentication openid map-claims -un username
 
