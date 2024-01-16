@@ -34,4 +34,3 @@ tsm settings import -f local.json
 tsm pending-changes apply
 tsm initialize --start-server --request-timeout 1800
 tabcmd initialuser --server http://localhost --username 'tableauadmin'
-admin123
